@@ -24,16 +24,45 @@ export async function getCurrentUser() {
 }
 
 export async function login(email: string, password: string) {
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) return { data: null, error };
-  
-  const { data: userData, error: userError } = await supabase
-    .from('users')
-    .select('*')
-    .eq('email', email)
-    .single();
-  
-  return { data: userData || data.user, error: userError };
+  try {
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) return { data: null, error };
+    
+    if (!data.user) return { data: null, error: new Error('登录失败') };
+    
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('email', email)
+      .single();
+    
+    if (userData) {
+      return { data: userData, error: null };
+    }
+    
+    const fallbackUser = {
+      id: data.user.id,
+      email: data.user.email!,
+      name: data.user.email!.split('@')[0],
+      role: 'student' as User['role'],
+      approved: true,
+      created_at: new Date().toISOString().split('T')[0],
+      updated_at: new Date().toISOString().split('T')[0],
+    };
+    
+    const { error: insertError } = await supabase
+      .from('users')
+      .insert(fallbackUser);
+    
+    if (insertError) {
+      console.warn('创建用户记录失败:', insertError);
+    }
+    
+    return { data: fallbackUser, error: null };
+  } catch (e) {
+    console.error('登录异常:', e);
+    return { data: null, error: e as Error };
+  }
 }
 
 export async function logout() {
