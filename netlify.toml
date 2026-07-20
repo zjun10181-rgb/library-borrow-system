@@ -1,3 +1,9 @@
 [build]
   command = "npm run build"
   publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# 部署后请在此填写 Render 后端的实际地址
+# 例如: VITE_API_URL = "https://library-borrow-server.onrender.com"

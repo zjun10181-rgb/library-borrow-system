@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: library-borrow-server
+    runtime: node
+    plan: free
+    region: singapore
+    buildCommand: cd server && npm install
+    startCommand: cd server && npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
+      - key: DB_PATH
+        value: /data/db.json
+    disk:
+      name: data
+      mountPath: /data
+      sizeGB: 1

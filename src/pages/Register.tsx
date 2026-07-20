@@ -4,7 +4,7 @@ import { Library, Mail, Lock, User, GraduationCap, Briefcase } from 'lucide-reac
 import { Input } from '@/components/common/Input';
 import { Select } from '@/components/common/Select';
 import { Button } from '@/components/common/Button';
-import { signUp, insertUser } from '@/utils/supabase';
+import { signUp } from '@/utils/supabase';
 import type { UserRole } from '@/types';
 
 export function Register() {
@@ -39,23 +39,16 @@ export function Register() {
       const { data, error: authError } = await signUp(email, password, name, role);
 
       if (authError) {
-        if (authError.message.includes('already registered')) {
+        if (authError.message.includes('已被注册')) {
           setError('该邮箱已被注册');
         } else {
-          setError('注册失败，请重试');
+          setError(authError.message || '注册失败，请重试');
         }
         setLoading(false);
         return;
       }
 
-      if (data.user) {
-        await insertUser({
-          id: data.user.id,
-          email,
-          name,
-          role,
-        });
-
+      if (data) {
         setSuccess(true);
         setLoading(false);
 

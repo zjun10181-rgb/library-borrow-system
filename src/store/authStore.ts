@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { User } from '@/types';
-import { getCurrentUser } from '@/utils/supabase';
+import { getCurrentUser, logout as apiLogout } from '@/utils/supabase';
 
 interface AuthStore {
   user: User | null;
@@ -9,8 +9,7 @@ interface AuthStore {
   setUser: (user: User | null) => void;
   setLoading: (loading: boolean) => void;
   initialize: () => void;
-  login: () => void;
-  logout: () => void;
+  logout: () => Promise<void>;
   isAdmin: () => boolean;
 }
 
@@ -28,11 +27,8 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
   
   initialize: async () => {
     try {
-      const result = await Promise.race([
-        getCurrentUser(),
-        new Promise<{ data: null; error: null }>((_, reject) => setTimeout(() => reject(new Error('Timeout')), 3000))
-      ]);
-      if (result?.data) {
+      const result = await getCurrentUser();
+      if (result.data) {
         set({ user: result.data, isAuthenticated: result.data.approved });
       }
     } catch (error) {
@@ -41,9 +37,10 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     set({ isLoading: false });
   },
   
-  login: () => set({ isAuthenticated: true }),
-  
-  logout: () => set({ user: null, isAuthenticated: false }),
+  logout: async () => {
+    await apiLogout();
+    set({ user: null, isAuthenticated: false });
+  },
   
   isAdmin: () => {
     const { user } = get();
