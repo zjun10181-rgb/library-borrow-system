@@ -4,18 +4,7 @@ import { Card } from '@/components/common/Card';
 import { Badge } from '@/components/common/Badge';
 import { getBooks, getUsers, getBorrowRecords } from '@/utils/supabase';
 import { useAuthStore } from '@/store/authStore';
-
-interface BorrowRecordWithBook {
-  books: {
-    title: string;
-    author: string;
-  };
-  users: {
-    name: string;
-  };
-  due_date: string;
-  status: string;
-}
+import type { BorrowRecordWithBook } from '@/types';
 
 export function Dashboard() {
   const [stats, setStats] = useState({

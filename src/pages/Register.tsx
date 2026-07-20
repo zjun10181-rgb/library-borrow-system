@@ -36,7 +36,7 @@ export function Register() {
     setLoading(true);
 
     try {
-      const { data, error: authError } = await signUp(email, password);
+      const { data, error: authError } = await signUp(email, password, name, role);
 
       if (authError) {
         if (authError.message.includes('already registered')) {

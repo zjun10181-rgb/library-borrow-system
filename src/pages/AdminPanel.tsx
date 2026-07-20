@@ -6,24 +6,7 @@ import { Input } from '@/components/common/Input';
 import { Badge } from '@/components/common/Badge';
 import { getUsers, getBooks, getBorrowRecords, approveUser, deleteUser, deleteBook, insertUser, updatePassword, updateUserRole, resetPassword } from '@/utils/supabase';
 import { useAuthStore } from '@/store/authStore';
-import type { User, Book } from '@/types';
-
-interface BorrowRecordWithBook {
-  id: string;
-  books: {
-    title: string;
-    author: string;
-    id: string;
-  };
-  users: {
-    name: string;
-    id: string;
-  };
-  borrow_date: string;
-  due_date: string;
-  return_date?: string | null;
-  status: string;
-}
+import type { User, Book, BorrowRecordWithBook } from '@/types';
 
 type TabType = 'users' | 'books' | 'borrows' | 'create-user' | 'change-password';
 

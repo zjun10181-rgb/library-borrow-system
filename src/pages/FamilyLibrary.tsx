@@ -111,7 +111,7 @@ export function FamilyLibrary() {
       if (familiesData) {
         for (const family of familiesData) {
           const { data: booksData } = await getFamilyBooks(family.id);
-          familyBooks[family.id] = booksData || [];
+          familyBooks[family.id] = booksData?.map(item => item.books) || [];
         }
       }
       setBooksByFamily(familyBooks);

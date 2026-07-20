@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { User } from '@/types';
-import { getCurrentUser, getUserByEmail } from '@/utils/supabase';
+import { getCurrentUser } from '@/utils/supabase';
 
 interface AuthStore {
   user: User | null;
@@ -28,15 +28,12 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
   
   initialize: async () => {
     try {
-      const authUser = await Promise.race([
+      const result = await Promise.race([
         getCurrentUser(),
-        new Promise<null>((_, reject) => setTimeout(() => reject(new Error('Timeout')), 3000))
+        new Promise<{ data: null; error: null }>((_, reject) => setTimeout(() => reject(new Error('Timeout')), 3000))
       ]);
-      if (authUser && 'email' in authUser) {
-        const { data: userData } = await getUserByEmail(authUser.email);
-        if (userData) {
-          set({ user: userData, isAuthenticated: userData.approved });
-        }
+      if (result?.data) {
+        set({ user: result.data, isAuthenticated: result.data.approved });
       }
     } catch (error) {
       console.log('Auth initialize skipped:', error);

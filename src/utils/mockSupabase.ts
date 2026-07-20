@@ -348,6 +348,7 @@ export async function createFamily(familyData: {
     id: `family_${Date.now()}`,
     members: [familyData.head_of_family],
     created_at: new Date().toISOString().split('T')[0],
+    updated_at: new Date().toISOString().split('T')[0],
   };
   families.push(newFamily);
   saveData(STORAGE_KEYS.families, families);
@@ -359,6 +360,7 @@ export async function createFamily(familyData: {
     owner_id: newFamily.id,
     is_public: false,
     created_at: new Date().toISOString().split('T')[0],
+    updated_at: new Date().toISOString().split('T')[0],
   };
   modules.push(familyModule);
   saveData(STORAGE_KEYS.modules, modules);

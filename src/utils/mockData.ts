@@ -24,6 +24,7 @@ export const mockFamilies: Family[] = [
     head_of_family: 'user1',
     members: ['user1'],
     created_at: '2024-07-01',
+    updated_at: '2024-07-01',
   },
   {
     id: 'family2',
@@ -31,18 +32,19 @@ export const mockFamilies: Family[] = [
     head_of_family: 'user2',
     members: ['user2'],
     created_at: '2024-07-05',
+    updated_at: '2024-07-05',
   },
 ];
 
 export const mockModules: Module[] = [
-  { id: '1', name: '文学经典', type: 'school', is_public: true, created_at: '2024-01-01' },
-  { id: '2', name: '科技科普', type: 'school', is_public: true, created_at: '2024-01-01' },
-  { id: '3', name: '人文历史', type: 'school', is_public: true, created_at: '2024-01-01' },
-  { id: '4', name: '儿童读物', type: 'school', is_public: true, created_at: '2024-01-01' },
-  { id: '5', name: '世界名著', type: 'school', is_public: true, created_at: '2024-01-01' },
-  { id: '6', name: '科普读物', type: 'school', is_public: true, created_at: '2024-01-01' },
-  { id: 'family_mod1', name: '张三家庭藏书', type: 'family', owner_id: 'family1', is_public: false, created_at: '2024-07-01' },
-  { id: 'family_mod2', name: '李四家庭藏书', type: 'family', owner_id: 'family2', is_public: false, created_at: '2024-07-05' },
+  { id: '1', name: '文学经典', type: 'school', is_public: true, created_at: '2024-01-01', updated_at: '2024-01-01' },
+  { id: '2', name: '科技科普', type: 'school', is_public: true, created_at: '2024-01-01', updated_at: '2024-01-01' },
+  { id: '3', name: '人文历史', type: 'school', is_public: true, created_at: '2024-01-01', updated_at: '2024-01-01' },
+  { id: '4', name: '儿童读物', type: 'school', is_public: true, created_at: '2024-01-01', updated_at: '2024-01-01' },
+  { id: '5', name: '世界名著', type: 'school', is_public: true, created_at: '2024-01-01', updated_at: '2024-01-01' },
+  { id: '6', name: '科普读物', type: 'school', is_public: true, created_at: '2024-01-01', updated_at: '2024-01-01' },
+  { id: 'family_mod1', name: '张三家庭藏书', type: 'family', owner_id: 'family1', is_public: false, created_at: '2024-07-01', updated_at: '2024-07-01' },
+  { id: 'family_mod2', name: '李四家庭藏书', type: 'family', owner_id: 'family2', is_public: false, created_at: '2024-07-05', updated_at: '2024-07-05' },
 ];
 
 export const mockBooks: Book[] = [

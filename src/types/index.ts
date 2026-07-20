@@ -3,9 +3,11 @@ export type UserRole = 'student' | 'teacher' | 'parent' | 'admin';
 export interface Family {
   id: string;
   name: string;
-  head_of_family: string;
-  members: string[];
+  head_of_family?: string;
+  members?: string[];
+  description?: string;
   created_at: string;
+  updated_at: string;
 }
 
 export interface User {
@@ -25,10 +27,13 @@ export type ModuleType = 'school' | 'family';
 export interface Module {
   id: string;
   name: string;
-  type: ModuleType;
+  description?: string;
+  icon?: string;
+  type?: ModuleType;
   owner_id?: string;
-  is_public: boolean;
+  is_public?: boolean;
   created_at: string;
+  updated_at: string;
 }
 
 export interface Book {
@@ -102,4 +107,27 @@ export interface Statistics {
   total_users: number;
   monthly_borrows: number[];
   top_categories: { name: string; count: number }[];
+}
+
+export interface BorrowRecordWithBook {
+  id: string;
+  book_id: string;
+  user_id: string;
+  borrow_date: string;
+  due_date: string;
+  return_date?: string;
+  status: BorrowStatus;
+  created_at: string;
+  updated_at?: string;
+  books: {
+    title: string;
+    author: string;
+    id: string;
+    cover_url?: string;
+  };
+  users?: {
+    name: string;
+    id: string;
+    email?: string;
+  };
 }

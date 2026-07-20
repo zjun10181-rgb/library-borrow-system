@@ -7,18 +7,7 @@ import { Card } from '@/components/common/Card';
 import { Badge } from '@/components/common/Badge';
 import { getBorrowRecords, returnBook, updateBook, getBookById } from '@/utils/supabase';
 import { useAuthStore } from '@/store/authStore';
-import type { BorrowRecord } from '@/types';
-
-interface BorrowRecordWithBook extends BorrowRecord {
-  books: {
-    title: string;
-    author: string;
-    id: string;
-  };
-  users: {
-    name: string;
-  };
-}
+import type { BorrowRecordWithBook } from '@/types';
 
 export function ReturnForm() {
   const [searchTerm, setSearchTerm] = useState('');
