@@ -1,3 +1,3 @@
 [build]
-  command = "VITE_SUPABASE_URL=https://umzgbhepbzlejtmbhgy.supabase.co VITE_SUPABASE_ANON_KEY=sb_publishable_XtAHd2Ag1Qhh15Sd7UfpUg_mFHtiIZa npm run build"
+  command = "npm run build"
   publish = "dist"
