@@ -1,5 +1,5 @@
 import type { User, Book, BorrowRecord, Family, Module, BorrowRecordWithBook } from '@/types';
-import { mockUsers, mockBooks, mockBorrowRecords, mockFamilies, mockModules } from './mockData';
+import { mockUsers, mockBooks, mockBorrowRecords, mockFamilies, mockModules, mockPasswords } from './mockData';
 
 const STORAGE_KEYS = {
   users: 'library_users',
@@ -40,6 +40,11 @@ export async function login(email: string, password: string) {
   const user = users.find(u => u.email === email);
   
   if (!user) {
+    return { data: null, error: new Error('邮箱或密码错误') };
+  }
+  
+  const correctPassword = mockPasswords[email] || 'password123';
+  if (password !== correctPassword) {
     return { data: null, error: new Error('邮箱或密码错误') };
   }
   

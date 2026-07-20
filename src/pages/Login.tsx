@@ -30,22 +30,8 @@ export function Login() {
         return;
       }
 
-      if (data.user) {
-        const { data: userData, error: userError } = await getUserByEmail(email);
-        
-        if (userError || !userData) {
-          setError('用户信息获取失败');
-          setLoading(false);
-          return;
-        }
-
-        if (!userData.approved) {
-          setError('您的账号尚未被管理员批准，请等待审核');
-          setLoading(false);
-          return;
-        }
-
-        setUser(userData);
+      if (data) {
+        setUser(data);
         setAuthLoading(false);
         navigate('/');
       }
