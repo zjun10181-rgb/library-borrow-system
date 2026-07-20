@@ -1,13 +1,5 @@
-import { createClient } from '@supabase/supabase-js';
 import type { User, Book, BorrowRecord, Family, Module, BorrowRecordWithBook } from '@/types';
 import { mockUsers, mockBooks, mockBorrowRecords, mockFamilies, mockModules } from './mockData';
-
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
-
-export const supabase = supabaseUrl && supabaseAnonKey 
-  ? createClient(supabaseUrl, supabaseAnonKey) 
-  : null;
 
 const STORAGE_KEYS = {
   users: 'library_users',
