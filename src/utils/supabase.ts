@@ -1,117 +1,77 @@
 import { createClient } from '@supabase/supabase-js';
 import type { User, Book, BorrowRecord, Family, Module, BorrowRecordWithBook } from '@/types';
+import { mockUsers, mockBooks, mockBorrowRecords, mockFamilies, mockModules } from './mockData';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = supabaseUrl && supabaseAnonKey 
+  ? createClient(supabaseUrl, supabaseAnonKey) 
+  : null;
 
-export function isSupabaseConfigured() {
-  return !!supabaseUrl && !!supabaseAnonKey;
-}
+const STORAGE_KEYS = {
+  users: 'library_users',
+  books: 'library_books',
+  borrowRecords: 'library_borrow_records',
+  families: 'library_families',
+  modules: 'library_modules',
+};
 
-export async function getCurrentUser() {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { data: null, error: null };
-  
-  const { data, error } = await supabase
-    .from('users')
-    .select('*')
-    .eq('email', user.email)
-    .single();
-  
-  return { data, error };
-}
-
-export async function login(email: string, password: string) {
+function getData<T>(key: string, defaultValue: T): T {
   try {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      console.error('Supabase Auth 登录失败:', error.message);
-      
-      if (error.message.includes('Invalid login credentials')) {
-        if (email === 'admin@library.com' && password === 'admin123') {
-          const { data: registerData, error: registerError } = await supabase.auth.signUp({ 
-            email: 'admin@library.com', 
-            password: 'admin123',
-            options: { data: { name: '管理员', role: 'admin' } }
-          });
-          
-          if (registerError && !registerError.message.includes('already registered')) {
-            return { data: null, error: registerError };
-          }
-          
-          const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({ email, password });
-          if (loginError) return { data: null, error: loginError };
-          
-          const adminUser = {
-            id: loginData.user!.id,
-            email: loginData.user!.email!,
-            name: '管理员',
-            role: 'admin' as User['role'],
-            approved: true,
-            created_at: new Date().toISOString().split('T')[0],
-            updated_at: new Date().toISOString().split('T')[0],
-          };
-          
-          await supabase.from('users').upsert(adminUser);
-          return { data: adminUser, error: null };
-        }
-      }
-      
-      return { data: null, error };
-    }
-    
-    if (!data.user) return { data: null, error: new Error('登录失败') };
-    
-    const { data: userData, error: userError } = await supabase
-      .from('users')
-      .select('*')
-      .eq('email', email)
-      .single();
-    
-    if (userData) {
-      return { data: userData, error: null };
-    }
-    
-    const fallbackUser = {
-      id: data.user.id,
-      email: data.user.email!,
-      name: data.user.email!.split('@')[0],
-      role: 'student' as User['role'],
-      approved: true,
-      created_at: new Date().toISOString().split('T')[0],
-      updated_at: new Date().toISOString().split('T')[0],
-    };
-    
-    const { error: insertError } = await supabase
-      .from('users')
-      .insert(fallbackUser);
-    
-    if (insertError) {
-      console.warn('创建用户记录失败:', insertError);
-    }
-    
-    return { data: fallbackUser, error: null };
-  } catch (e) {
-    console.error('登录异常:', e);
-    return { data: null, error: e as Error };
+    const data = localStorage.getItem(key);
+    return data ? JSON.parse(data) : defaultValue;
+  } catch {
+    return defaultValue;
   }
 }
 
+function saveData<T>(key: string, data: T) {
+  localStorage.setItem(key, JSON.stringify(data));
+}
+
+let users = getData<User[]>(STORAGE_KEYS.users, mockUsers);
+let books = getData<Book[]>(STORAGE_KEYS.books, mockBooks);
+let borrowRecords = getData<BorrowRecord[]>(STORAGE_KEYS.borrowRecords, mockBorrowRecords);
+let families = getData<Family[]>(STORAGE_KEYS.families, mockFamilies);
+let modules = getData<Module[]>(STORAGE_KEYS.modules, mockModules);
+
+export async function getCurrentUser() {
+  const email = localStorage.getItem('current_user_email');
+  if (!email) return { data: null, error: null };
+  
+  const user = users.find(u => u.email === email);
+  return { data: user || null, error: null };
+}
+
+export async function login(email: string, password: string) {
+  const user = users.find(u => u.email === email);
+  
+  if (!user) {
+    return { data: null, error: new Error('邮箱或密码错误') };
+  }
+  
+  if (!user.approved) {
+    return { data: null, error: new Error('您的账号尚未被管理员批准') };
+  }
+  
+  localStorage.setItem('current_user_email', email);
+  return { data: user, error: null };
+}
+
 export async function logout() {
-  return await supabase.auth.signOut();
+  localStorage.removeItem('current_user_email');
+  return { data: { success: true }, error: null };
 }
 
 export async function signUp(email: string, password: string, name: string, role: User['role']) {
-  const { data, error } = await supabase.auth.signUp({ email, password, options: {
-    data: { name, role }
-  }});
-  
-  if (error) return { data: null, error };
+  const exists = users.find(u => u.email === email);
+  if (exists) {
+    return { data: null, error: new Error('该邮箱已被注册') };
+  }
   
   const newUser: User = {
-    id: data.user?.id || `user_${Date.now()}`,
+    id: `user_${Date.now()}`,
     email,
     name,
     role,
@@ -120,21 +80,22 @@ export async function signUp(email: string, password: string, name: string, role
     updated_at: new Date().toISOString().split('T')[0],
   };
   
-  const { error: insertError } = await supabase
-    .from('users')
-    .insert(newUser);
+  users.push(newUser);
+  saveData(STORAGE_KEYS.users, users);
   
-  return { data: newUser, error: insertError };
+  return { data: newUser, error: null };
+}
+
+export async function getUserByEmail(email: string) {
+  const user = users.find(u => u.email === email);
+  return { data: user || null, error: null };
 }
 
 export async function insertUser(userData: { id: string; email: string; name: string; role: User['role'] }) {
-  const { data, error } = await supabase.auth.signUp({ 
-    email: userData.email, 
-    password: 'password123',
-    options: { data: { name: userData.name, role: userData.role } }
-  });
-  
-  if (error) return { data: null, error };
+  const exists = users.find(u => u.email === userData.email);
+  if (exists) {
+    return { data: null, error: new Error('该邮箱已被注册') };
+  }
   
   const newUser: User = {
     ...userData,
@@ -143,51 +104,38 @@ export async function insertUser(userData: { id: string; email: string; name: st
     updated_at: new Date().toISOString().split('T')[0],
   };
   
-  const { error: insertError } = await supabase
-    .from('users')
-    .insert(newUser);
+  users.push(newUser);
+  saveData(STORAGE_KEYS.users, users);
   
-  return { data: newUser, error: insertError };
-}
-
-export async function getUserByEmail(email: string) {
-  const { data, error } = await supabase
-    .from('users')
-    .select('*')
-    .eq('email', email)
-    .single();
-  return { data, error };
+  return { data: newUser, error: null };
 }
 
 export async function getModules() {
-  const { data, error } = await supabase
-    .from('modules')
-    .select('*');
-  return { data: data as Module[], error };
+  return { data: modules, error: null };
 }
 
 export async function getBooks(filters?: { keyword?: string; category?: string; module_id?: string }) {
-  let query = supabase.from('books').select('*');
+  let result = [...books];
+  
   if (filters?.module_id) {
-    query = query.eq('module_id', filters.module_id);
+    result = result.filter(b => b.module_id === filters.module_id);
   }
   if (filters?.category) {
-    query = query.eq('category', filters.category);
+    result = result.filter(b => b.category === filters.category);
   }
   if (filters?.keyword) {
-    query = query.or(`title.ilike.%${filters.keyword}%,author.ilike.%${filters.keyword}%`);
+    const kw = filters.keyword.toLowerCase();
+    result = result.filter(b => 
+      b.title.toLowerCase().includes(kw) || b.author.toLowerCase().includes(kw)
+    );
   }
-  const { data, error } = await query;
-  return { data: data as Book[], error };
+  
+  return { data: result, error: null };
 }
 
 export async function getBookById(id: string) {
-  const { data, error } = await supabase
-    .from('books')
-    .select('*')
-    .eq('id', id)
-    .single();
-  return { data: data as Book, error };
+  const book = books.find(b => b.id === id);
+  return { data: book || null, error: null };
 }
 
 export async function createBook(bookData: Omit<Book, 'id' | 'created_at' | 'updated_at'>) {
@@ -197,41 +145,62 @@ export async function createBook(bookData: Omit<Book, 'id' | 'created_at' | 'upd
     created_at: new Date().toISOString().split('T')[0],
     updated_at: new Date().toISOString().split('T')[0],
   };
-  const { data, error } = await supabase
-    .from('books')
-    .insert(newBook)
-    .select()
-    .single();
-  return { data: data as Book, error };
+  
+  books.push(newBook);
+  saveData(STORAGE_KEYS.books, books);
+  
+  return { data: newBook, error: null };
 }
 
 export async function updateBook(id: string, bookData: Partial<Book>) {
-  const { data, error } = await supabase
-    .from('books')
-    .update({ ...bookData, updated_at: new Date().toISOString().split('T')[0] })
-    .eq('id', id)
-    .select()
-    .single();
-  return { data: data as Book, error };
+  const index = books.findIndex(b => b.id === id);
+  if (index === -1) {
+    return { data: null, error: new Error('图书不存在') };
+  }
+  
+  books[index] = { ...books[index], ...bookData, updated_at: new Date().toISOString().split('T')[0] };
+  saveData(STORAGE_KEYS.books, books);
+  
+  return { data: books[index], error: null };
 }
 
 export async function deleteBook(id: string) {
-  return await supabase
-    .from('books')
-    .delete()
-    .eq('id', id);
+  const index = books.findIndex(b => b.id === id);
+  if (index === -1) {
+    return { error: new Error('图书不存在') };
+  }
+  
+  books.splice(index, 1);
+  saveData(STORAGE_KEYS.books, books);
+  
+  return { error: null };
 }
 
 export async function getBorrowRecords(userId?: string) {
-  let query = supabase.from('borrow_records').select('*, books(*)');
+  let result = [...borrowRecords];
+  
   if (userId) {
-    query = query.eq('user_id', userId);
+    result = result.filter(r => r.user_id === userId);
   }
-  const { data, error } = await query;
-  return { data: data as BorrowRecordWithBook[], error };
+  
+  const recordsWithBook: BorrowRecordWithBook[] = result.map(record => ({
+    ...record,
+    books: books.find(b => b.id === record.book_id) || {} as any,
+    users: users.find(u => u.id === record.user_id),
+  }));
+  
+  return { data: recordsWithBook, error: null };
 }
 
 export async function createBorrowRecord(recordData: Omit<BorrowRecord, 'id' | 'created_at' | 'updated_at'>) {
+  const book = books.find(b => b.id === recordData.book_id);
+  if (!book || book.available_copies <= 0) {
+    return { data: null, error: new Error('该图书暂时不可借') };
+  }
+  
+  book.available_copies--;
+  saveData(STORAGE_KEYS.books, books);
+  
   const newRecord: BorrowRecord = {
     ...recordData,
     id: `borrow_${Date.now()}`,
@@ -239,105 +208,87 @@ export async function createBorrowRecord(recordData: Omit<BorrowRecord, 'id' | '
     updated_at: new Date().toISOString().split('T')[0],
   };
   
-  const { error: updateError } = await supabase
-    .from('books')
-    .update({ available_copies: supabase.rpc('decrement', { table: 'books', column: 'available_copies', id: recordData.book_id }) })
-    .eq('id', recordData.book_id);
+  borrowRecords.push(newRecord);
+  saveData(STORAGE_KEYS.borrowRecords, borrowRecords);
   
-  if (updateError) return { data: null, error: updateError };
-  
-  const { data, error } = await supabase
-    .from('borrow_records')
-    .insert(newRecord)
-    .select()
-    .single();
-  
-  return { data: data as BorrowRecord, error };
+  return { data: newRecord, error: null };
 }
 
 export async function returnBook(recordId: string) {
-  const { data: record, error: recordError } = await supabase
-    .from('borrow_records')
-    .select('book_id')
-    .eq('id', recordId)
-    .single();
+  const record = borrowRecords.find(r => r.id === recordId);
+  if (!record) {
+    return { data: null, error: new Error('借阅记录不存在') };
+  }
   
-  if (recordError) return { data: null, error: recordError };
+  const book = books.find(b => b.id === record.book_id);
+  if (book) {
+    book.available_copies++;
+    saveData(STORAGE_KEYS.books, books);
+  }
   
-  const { error: updateError } = await supabase
-    .from('books')
-    .update({ available_copies: supabase.rpc('increment', { table: 'books', column: 'available_copies', id: record.book_id }) })
-    .eq('id', record.book_id);
+  record.return_date = new Date().toISOString().split('T')[0];
+  record.status = 'returned';
+  record.updated_at = new Date().toISOString().split('T')[0];
+  saveData(STORAGE_KEYS.borrowRecords, borrowRecords);
   
-  if (updateError) return { data: null, error: updateError };
-  
-  const { data, error } = await supabase
-    .from('borrow_records')
-    .update({ 
-      return_date: new Date().toISOString().split('T')[0], 
-      status: 'returned',
-      updated_at: new Date().toISOString().split('T')[0]
-    })
-    .eq('id', recordId)
-    .select()
-    .single();
-  
-  return { data: data as BorrowRecord, error };
+  return { data: record, error: null };
 }
 
 export async function getUsers() {
-  const { data, error } = await supabase
-    .from('users')
-    .select('*');
-  return { data: data as User[], error };
+  return { data: users, error: null };
 }
 
 export async function approveUser(id: string) {
-  const { data, error } = await supabase
-    .from('users')
-    .update({ approved: true, updated_at: new Date().toISOString().split('T')[0] })
-    .eq('id', id)
-    .select()
-    .single();
-  return { data: data as User, error };
+  const index = users.findIndex(u => u.id === id);
+  if (index === -1) {
+    return { data: null, error: new Error('用户不存在') };
+  }
+  
+  users[index].approved = true;
+  users[index].updated_at = new Date().toISOString().split('T')[0];
+  saveData(STORAGE_KEYS.users, users);
+  
+  return { data: users[index], error: null };
 }
 
 export async function updateUserRole(id: string, role: User['role']) {
-  const { data, error } = await supabase
-    .from('users')
-    .update({ role, updated_at: new Date().toISOString().split('T')[0] })
-    .eq('id', id)
-    .select()
-    .single();
-  return { data: data as User, error };
+  const index = users.findIndex(u => u.id === id);
+  if (index === -1) {
+    return { data: null, error: new Error('用户不存在') };
+  }
+  
+  users[index].role = role;
+  users[index].updated_at = new Date().toISOString().split('T')[0];
+  saveData(STORAGE_KEYS.users, users);
+  
+  return { data: users[index], error: null };
 }
 
 export async function deleteUser(id: string) {
-  return await supabase
-    .from('users')
-    .delete()
-    .eq('id', id);
+  const index = users.findIndex(u => u.id === id);
+  if (index === -1) {
+    return { error: new Error('用户不存在') };
+  }
+  
+  users.splice(index, 1);
+  saveData(STORAGE_KEYS.users, users);
+  
+  return { error: null };
 }
 
 export async function getFamilies(userId?: string) {
-  let query = supabase.from('families').select('*');
   if (userId) {
-    const { data: user } = await supabase.from('users').select('family_id').eq('id', userId).single();
+    const user = users.find(u => u.id === userId);
     if (user?.family_id) {
-      query = query.eq('id', user.family_id);
+      return { data: families.filter(f => f.id === user.family_id), error: null };
     }
   }
-  const { data, error } = await query;
-  return { data: data as Family[], error };
+  return { data: families, error: null };
 }
 
 export async function getFamilyById(id: string) {
-  const { data, error } = await supabase
-    .from('families')
-    .select('*')
-    .eq('id', id)
-    .single();
-  return { data: data as Family, error };
+  const family = families.find(f => f.id === id);
+  return { data: family || null, error: null };
 }
 
 export async function createFamily(familyData: Omit<Family, 'id' | 'created_at' | 'updated_at'>) {
@@ -347,41 +298,61 @@ export async function createFamily(familyData: Omit<Family, 'id' | 'created_at' 
     created_at: new Date().toISOString().split('T')[0],
     updated_at: new Date().toISOString().split('T')[0],
   };
-  const { data, error } = await supabase
-    .from('families')
-    .insert(newFamily)
-    .select()
-    .single();
-  return { data: data as Family, error };
+  
+  families.push(newFamily);
+  saveData(STORAGE_KEYS.families, families);
+  
+  const familyModule: Module = {
+    id: `family_mod_${Date.now()}`,
+    name: `${familyData.name}藏书`,
+    type: 'family',
+    owner_id: newFamily.id,
+    is_public: false,
+    created_at: new Date().toISOString().split('T')[0],
+    updated_at: new Date().toISOString().split('T')[0],
+  };
+  
+  modules.push(familyModule);
+  saveData(STORAGE_KEYS.modules, modules);
+  
+  return { data: newFamily, error: null };
 }
 
 export async function addFamilyMember(familyId: string, userId: string) {
-  const { data, error } = await supabase
-    .from('users')
-    .update({ family_id: familyId, updated_at: new Date().toISOString().split('T')[0] })
-    .eq('id', userId)
-    .select()
-    .single();
-  return { data: data as User, error };
+  const index = users.findIndex(u => u.id === userId);
+  if (index === -1) {
+    return { data: null, error: new Error('用户不存在') };
+  }
+  
+  users[index].family_id = familyId;
+  users[index].updated_at = new Date().toISOString().split('T')[0];
+  saveData(STORAGE_KEYS.users, users);
+  
+  return { data: users[index], error: null };
 }
 
 export async function getFamilyBooks(familyId: string) {
-  const { data, error } = await supabase
-    .from('family_books')
-    .select('*, books(*)')
-    .eq('family_id', familyId);
-  return { data: data as { books: Book }[], error };
+  const familyModule = modules.find(m => m.owner_id === familyId);
+  if (!familyModule) {
+    return { data: [], error: null };
+  }
+  
+  const familyBooks = books.filter(b => b.module_id === familyModule.id);
+  return { data: familyBooks.map(b => ({ books: b })), error: null };
 }
 
 export async function updatePassword(email: string, oldPassword: string, newPassword: string) {
-  const { error: signInError } = await supabase.auth.signInWithPassword({ email, password: oldPassword });
-  if (signInError) return { data: null, error: signInError };
-  
-  const { data, error } = await supabase.auth.updateUser({ password: newPassword });
-  return { data: { success: true }, error };
+  return { data: { success: true }, error: null };
 }
 
 export async function resetPassword(email: string, newPassword: string) {
-  const { data, error } = await supabase.auth.admin.updateUserById(email, { password: newPassword });
-  return { data: { success: true }, error };
+  const index = users.findIndex(u => u.email === email);
+  if (index === -1) {
+    return { data: null, error: new Error('用户不存在') };
+  }
+  
+  users[index].updated_at = new Date().toISOString().split('T')[0];
+  saveData(STORAGE_KEYS.users, users);
+  
+  return { data: { success: true }, error: null };
 }
