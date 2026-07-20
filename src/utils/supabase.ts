@@ -6,6 +6,10 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+export function isSupabaseConfigured() {
+  return !!supabaseUrl && !!supabaseAnonKey;
+}
+
 export async function getCurrentUser() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { data: null, error: null };
