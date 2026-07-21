@@ -18,7 +18,7 @@ const pool = new Pool({
 });
 
 app.use(cors({
-  origin: ['https://library-borrow-system.netlify.app', 'http://localhost:5173', 'http://localhost:4173'],
+  origin: ['https://library-borrow-system.netlify.app', 'https://library-borrow-frontend.onrender.com', 'http://localhost:5173', 'http://localhost:4173'],
   credentials: true
 }));
 app.use(express.json());
