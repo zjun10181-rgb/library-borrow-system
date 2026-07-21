@@ -43,11 +43,11 @@ async function request<T>(
 export async function getCurrentUser() {
   const token = getToken();
   if (!token) return { data: null, error: null };
-  return request<User>('/api/auth/me');
+  return request<User>('/api/auth?action=me');
 }
 
 export async function login(email: string, password: string): Promise<{ data: User | null; error: Error | null }> {
-  const result = await request<{ user: User; token: string }>('/api/auth/login', {
+  const result = await request<{ user: User; token: string }>('/api/auth?action=login', {
     method: 'POST',
     body: JSON.stringify({ email, password }),
   });
@@ -65,20 +65,19 @@ export async function logout() {
 }
 
 export async function signUp(email: string, password: string, name: string, role: User['role']) {
-  return request<User>('/api/auth/register', {
+  return request<User>('/api/auth?action=register', {
     method: 'POST',
     body: JSON.stringify({ email, password, name, role }),
   });
 }
 
 export async function changePassword(oldPassword: string, newPassword: string) {
-  return request<{ success: boolean }>('/api/auth/change-password', {
+  return request<{ success: boolean }>('/api/auth?action=change-password', {
     method: 'PUT',
     body: JSON.stringify({ oldPassword, newPassword }),
   });
 }
 
-// 兼容旧代码
 export async function getUserByEmail(email: string) {
   return { data: null, error: null };
 }
@@ -94,18 +93,18 @@ export async function getUsers() {
 }
 
 export async function approveUser(id: string) {
-  return request<User>(`/api/users/${id}/approve`, { method: 'PUT' });
+  return request<User>(`/api/users?id=${id}&action=approve`, { method: 'PUT' });
 }
 
 export async function updateUserRole(id: string, role: User['role']) {
-  return request<User>(`/api/users/${id}/role`, {
+  return request<User>(`/api/users?id=${id}&action=role`, {
     method: 'PUT',
     body: JSON.stringify({ role }),
   });
 }
 
 export async function deleteUser(id: string) {
-  return request<null>(`/api/users/${id}`, { method: 'DELETE' });
+  return request<null>(`/api/users?id=${id}`, { method: 'DELETE' });
 }
 
 export async function updatePassword(email: string, oldPassword: string, newPassword: string) {
@@ -113,8 +112,7 @@ export async function updatePassword(email: string, oldPassword: string, newPass
 }
 
 export async function resetPassword(email: string, newPassword: string) {
-  // 通过管理员接口重置，这里 email 参数实际是用户 id
-  return request<{ success: boolean }>(`/api/users/${email}/reset-password`, {
+  return request<{ success: boolean }>(`/api/users?id=${email}&action=reset-password`, {
     method: 'PUT',
     body: JSON.stringify({ newPassword }),
   });
@@ -127,7 +125,7 @@ export async function getFamilies(userId?: string) {
 }
 
 export async function getFamilyById(id: string) {
-  return request<Family>(`/api/families/${id}`);
+  return request<Family>(`/api/families?id=${id}`);
 }
 
 export async function createFamily(familyData: Omit<Family, 'id' | 'created_at' | 'updated_at'>) {
@@ -138,20 +136,20 @@ export async function createFamily(familyData: Omit<Family, 'id' | 'created_at' 
 }
 
 export async function addFamilyMember(familyId: string, userId: string) {
-  return request<{ success: boolean }>(`/api/families/${familyId}/members`, {
+  return request<{ success: boolean }>(`/api/families?id=${familyId}&action=members`, {
     method: 'POST',
     body: JSON.stringify({ userId }),
   });
 }
 
 export async function getFamilyBooks(familyId: string) {
-  return request<Book[]>(`/api/families/${familyId}/books`);
+  return request<Book[]>(`/api/families?id=${familyId}&action=books`);
 }
 
 // ============ 模块管理 ============
 
 export async function getModules() {
-  return request<Module[]>('/api/modules');
+  return request<Module[]>('/api/common?action=modules');
 }
 
 // ============ 图书管理 ============
@@ -167,7 +165,7 @@ export async function getBooks(filters?: { keyword?: string; category?: string; 
 }
 
 export async function getBookById(id: string) {
-  return request<Book>(`/api/books/${id}`);
+  return request<Book>(`/api/books?id=${id}`);
 }
 
 export async function createBook(bookData: Omit<Book, 'id' | 'created_at' | 'updated_at'>) {
@@ -178,14 +176,14 @@ export async function createBook(bookData: Omit<Book, 'id' | 'created_at' | 'upd
 }
 
 export async function updateBook(id: string, bookData: Partial<Book>) {
-  return request<Book>(`/api/books/${id}`, {
+  return request<Book>(`/api/books?id=${id}`, {
     method: 'PUT',
     body: JSON.stringify(bookData),
   });
 }
 
 export async function deleteBook(id: string) {
-  return request<null>(`/api/books/${id}`, { method: 'DELETE' });
+  return request<null>(`/api/books?id=${id}`, { method: 'DELETE' });
 }
 
 // ============ 借阅记录 ============
@@ -203,5 +201,11 @@ export async function createBorrowRecord(recordData: Omit<BorrowRecord, 'id' | '
 }
 
 export async function returnBook(recordId: string) {
-  return request<BorrowRecord>(`/api/borrow-records/${recordId}/return`, { method: 'PUT' });
+  return request<BorrowRecord>(`/api/borrow-records?id=${recordId}&action=return`, { method: 'PUT' });
+}
+
+// ============ 统计 ============
+
+export async function getStats() {
+  return request<{ total_books: number; available_books: number; total_borrowed: number; total_users: number }>('/api/common?action=stats');
 }
