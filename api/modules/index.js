@@ -1,8 +1,6 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
-import jwt from 'jsonwebtoken';
-import { pool, JWT_SECRET, initDBIfNeeded } from '../_shared';
+import { pool, initDBIfNeeded } from '../_shared.js';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default async function handler(req, res) {
   await initDBIfNeeded();
 
   if (req.method === 'GET') {

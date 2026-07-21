@@ -126,7 +126,7 @@ export async function initDBIfNeeded() {
   }
 }
 
-export function sanitizeUser(user: any) {
+export function sanitizeUser(user) {
   if (!user) return null;
   const { password_hash, ...rest } = user;
   return rest;

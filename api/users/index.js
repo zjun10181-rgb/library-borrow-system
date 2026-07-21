@@ -1,8 +1,7 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
 import jwt from 'jsonwebtoken';
-import { pool, JWT_SECRET, initDBIfNeeded, sanitizeUser } from '../_shared';
+import { pool, JWT_SECRET, initDBIfNeeded, sanitizeUser } from '../_shared.js';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default async function handler(req, res) {
   await initDBIfNeeded();
 
   const token = req.headers.authorization?.replace('Bearer ', '');
@@ -11,7 +10,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as { role: string };
+    const decoded = jwt.verify(token, JWT_SECRET);
     if (decoded.role !== 'admin') {
       return res.status(403).json({ error: '需要管理员权限' });
     }

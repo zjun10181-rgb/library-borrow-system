@@ -1,8 +1,7 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
 import bcrypt from 'bcryptjs';
-import { pool, initDBIfNeeded, sanitizeUser } from '../_shared';
+import { pool, initDBIfNeeded, sanitizeUser } from '../_shared.js';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default async function handler(req, res) {
   await initDBIfNeeded();
 
   if (req.method === 'POST') {

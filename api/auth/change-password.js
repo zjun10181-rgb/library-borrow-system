@@ -1,9 +1,8 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
-import { pool, JWT_SECRET, initDBIfNeeded } from '../_shared';
+import { pool, JWT_SECRET, initDBIfNeeded } from '../_shared.js';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default async function handler(req, res) {
   await initDBIfNeeded();
 
   const token = req.headers.authorization?.replace('Bearer ', '');
@@ -12,7 +11,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as { id: string };
+    const decoded = jwt.verify(token, JWT_SECRET);
 
     if (req.method === 'PUT') {
       const { oldPassword, newPassword } = req.body;

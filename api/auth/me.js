@@ -1,8 +1,7 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
 import jwt from 'jsonwebtoken';
-import { pool, JWT_SECRET, initDBIfNeeded, sanitizeUser } from '../_shared';
+import { pool, JWT_SECRET, initDBIfNeeded, sanitizeUser } from '../_shared.js';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default async function handler(req, res) {
   await initDBIfNeeded();
 
   if (req.method === 'GET') {
@@ -12,7 +11,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     try {
-      const decoded = jwt.verify(token, JWT_SECRET) as { id: string };
+      const decoded = jwt.verify(token, JWT_SECRET);
       const result = await pool.query('SELECT * FROM users WHERE id = $1', [decoded.id]);
       if (result.rows.length === 0) {
         return res.status(404).json({ error: '用户不存在' });

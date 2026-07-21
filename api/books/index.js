@@ -1,14 +1,13 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
 import jwt from 'jsonwebtoken';
-import { pool, JWT_SECRET, initDBIfNeeded } from '../_shared';
+import { pool, JWT_SECRET, initDBIfNeeded } from '../_shared.js';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default async function handler(req, res) {
   await initDBIfNeeded();
 
   if (req.method === 'GET') {
     const { keyword, category, module_id } = req.query;
     let query = 'SELECT * FROM books WHERE 1=1';
-    const params: any[] = [];
+    const params = [];
     let paramIndex = 1;
 
     if (module_id) {

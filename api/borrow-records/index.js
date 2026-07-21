@@ -1,8 +1,7 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
 import jwt from 'jsonwebtoken';
-import { pool, JWT_SECRET, initDBIfNeeded } from '../_shared';
+import { pool, JWT_SECRET, initDBIfNeeded } from '../_shared.js';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default async function handler(req, res) {
   await initDBIfNeeded();
 
   const token = req.headers.authorization?.replace('Bearer ', '');
@@ -11,7 +10,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as { id: string; role: string };
+    const decoded = jwt.verify(token, JWT_SECRET);
 
     if (req.method === 'GET') {
       const { user_id } = req.query;
@@ -24,7 +23,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         LEFT JOIN users u ON br.user_id = u.id
         WHERE 1=1
       `;
-      const params: any[] = [];
+      const params = [];
       let paramIndex = 1;
 
       if (decoded.role !== 'admin') {

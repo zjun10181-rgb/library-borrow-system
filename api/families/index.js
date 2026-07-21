@@ -1,8 +1,7 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
 import jwt from 'jsonwebtoken';
-import { pool, JWT_SECRET, initDBIfNeeded } from '../_shared';
+import { pool, JWT_SECRET, initDBIfNeeded } from '../_shared.js';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default async function handler(req, res) {
   await initDBIfNeeded();
 
   const token = req.headers.authorization?.replace('Bearer ', '');
@@ -17,7 +16,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const result = await pool.query('SELECT * FROM families ORDER BY created_at DESC');
       res.json({ data: result.rows, error: null });
     } else if (req.method === 'POST') {
-      const decoded = jwt.verify(token, JWT_SECRET) as { id: string };
+      const decoded = jwt.verify(token, JWT_SECRET);
       const { name, description } = req.body;
       const id = `family-${Date.now()}`;
 
