@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { pool, JWT_SECRET, initDBIfNeeded, sanitizeUser } from '../_shared.js';
+import { pool, JWT_SECRET, initDBIfNeeded, sanitizeUser } from '../lib/shared.js';
 
 export default async function handler(req, res) {
   await initDBIfNeeded();

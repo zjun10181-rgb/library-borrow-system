@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import { pool, JWT_SECRET, initDBIfNeeded } from '../_shared.js';
+import { pool, JWT_SECRET, initDBIfNeeded } from '../lib/shared.js';
 
 export default async function handler(req, res) {
   await initDBIfNeeded();
