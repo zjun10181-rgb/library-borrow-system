@@ -5,6 +5,7 @@ export interface Family {
   name: string;
   head_of_family?: string;
   members?: string[];
+  memberDetails?: User[];
   description?: string;
   created_at: string;
   updated_at: string;
