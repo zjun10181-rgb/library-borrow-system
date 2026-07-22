@@ -1,0 +1,35 @@
+{
+  "envId": "seven-website-8gwpkoon2ce77ee5",
+  "version": "2.0",
+  "$schema": "https://framework-1258016615.tcloudbaseapp.com/schema/latest.json",
+  "framework": {
+    "name": "library-borrow-system",
+    "plugins": [
+      {
+        "name": "@cloudbase/framework-plugin-website",
+        "inputs": {
+          "outputPath": "dist",
+          "cloudPath": "/"
+        }
+      },
+      {
+        "name": "@cloudbase/framework-plugin-function",
+        "inputs": {
+          "functionRootPath": "cloudfunctions",
+          "functions": [
+            {
+              "name": "api",
+              "runtime": "Nodejs18.19",
+              "handler": "index.main",
+              "timeout": 30,
+              "memorySize": 256,
+              "envVariables": {
+                "TCB_ENV": "seven-website-8gwpkoon2ce77ee5"
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

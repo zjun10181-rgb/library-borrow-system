@@ -1,595 +1,515 @@
-'use strict';
+const cloud = require('wx-server-sdk');
 
-const cloudbase = require('@cloudbase/node-sdk');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
+cloud.init({
+  env: process.env.TCB_ENV || 'seven-website-8gwpkoon2ce77ee5'
+});
 
-const JWT_SECRET = 'library-secret-key-change-in-production';
+const db = cloud.database();
 
-let db = null;
-
-function initDB() {
-  if (db) return db;
-  
-  try {
-    const app = cloudbase.init({
-      env: process.env.TCB_ENV,
-    });
-    db = app.database();
-    return db;
-  } catch (e) {
-    console.error('CloudBase init error:', e);
-    throw e;
-  }
+// 生成 JWT token
+function generateToken(userId) {
+  const jwt = require('jsonwebtoken');
+  const secret = process.env.JWT_SECRET || 'library_secret_key';
+  return jwt.sign({ userId }, secret, { expiresIn: '7d' });
 }
 
-function generateId(prefix = '') {
-  return `${prefix}${Date.now()}${Math.random().toString(36).substr(2, 9)}`;
-}
-
-function createResponse(data = null, error = null) {
-  return {
-    data,
-    error: error ? (error.message || error) : null,
-  };
-}
-
+// 验证 JWT token
 function verifyToken(token) {
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    return decoded;
+    const jwt = require('jsonwebtoken');
+    const secret = process.env.JWT_SECRET || 'library_secret_key';
+    return jwt.verify(token, secret);
   } catch {
     return null;
   }
 }
 
-async function getUserFromToken(token) {
+// 密码加密
+function hashPassword(password) {
+  const bcrypt = require('bcryptjs');
+  return bcrypt.hashSync(password, 10);
+}
+
+// 密码验证
+function comparePassword(password, hash) {
+  const bcrypt = require('bcryptjs');
+  return bcrypt.compareSync(password, hash);
+}
+
+// 错误响应
+function error(message) {
+  return { success: false, error: message };
+}
+
+// 成功响应
+function success(data) {
+  return { success: true, data };
+}
+
+// 获取当前用户
+async function getCurrentUser(token) {
   const decoded = verifyToken(token);
   if (!decoded) return null;
   
-  const db = initDB();
-  const res = await db.collection('users').where({ email: decoded.email }).get();
-  return res.data[0] || null;
+  const result = await db.collection('users').where({ id: decoded.userId }).get();
+  return result.data[0] || null;
 }
+
+// ============ 认证相关 ============
 
 async function handleAuth(event) {
-  const { action, email, password, name, role, oldPassword, newPassword } = event.queryString || event.body || {};
-  const db = initDB();
+  const { action } = event.queryString || {};
   
-  switch (action) {
-    case 'login': {
-      const res = await db.collection('users').where({ email }).get();
-      const user = res.data[0];
-      
-      if (!user) {
-        return createResponse(null, '邮箱或密码错误');
-      }
-      
-      if (!bcrypt.compareSync(password, user.password_hash)) {
-        return createResponse(null, '邮箱或密码错误');
-      }
-      
-      if (!user.approved) {
-        return createResponse(null, '您的账号尚未被管理员批准');
-      }
-      
-      const token = jwt.sign({ email: user.email }, JWT_SECRET, { expiresIn: '7d' });
-      const { password_hash, ...safeUser } = user;
-      
-      return createResponse({ user: safeUser, token });
+  if (action === 'login') {
+    const { email, password } = event.body;
+    
+    const result = await db.collection('users').where({ email }).get();
+    if (result.data.length === 0) {
+      return error('邮箱或密码错误');
     }
     
-    case 'register': {
-      if (!email || !password || !name) {
-        return createResponse(null, '邮箱、密码和姓名不能为空');
-      }
-      
-      const existing = await db.collection('users').where({ email }).get();
-      if (existing.data.length > 0) {
-        return createResponse(null, '该邮箱已被注册');
-      }
-      
-      const password_hash = bcrypt.hashSync(password, 10);
-      const newUser = {
-        _id: generateId('user_'),
-        email,
-        password_hash,
-        name,
-        role: role || 'student',
-        approved: false,
-        created_at: new Date().toISOString().split('T')[0],
-        updated_at: new Date().toISOString().split('T')[0],
-      };
-      
-      await db.collection('users').add(newUser);
-      const { password_hash: _, ...safeUser } = newUser;
-      
-      return createResponse(safeUser);
+    const user = result.data[0];
+    
+    if (!comparePassword(password, user.password)) {
+      return error('邮箱或密码错误');
     }
     
-    case 'me': {
-      const token = event.headers?.Authorization?.replace('Bearer ', '');
-      const user = await getUserFromToken(token);
-      
-      if (!user) {
-        return createResponse(null, '未登录');
-      }
-      
-      const { password_hash, ...safeUser } = user;
-      return createResponse(safeUser);
+    if (!user.approved) {
+      return error('您的账号尚未被管理员批准');
     }
     
-    case 'change-password': {
-      const token = event.headers?.Authorization?.replace('Bearer ', '');
-      const user = await getUserFromToken(token);
-      
-      if (!user) {
-        return createResponse(null, '未登录');
-      }
-      
-      if (!bcrypt.compareSync(oldPassword, user.password_hash)) {
-        return createResponse(null, '旧密码错误');
-      }
-      
-      const newHash = bcrypt.hashSync(newPassword, 10);
-      await db.collection('users').doc(user._id).update({
-        password_hash: newHash,
-        updated_at: new Date().toISOString().split('T')[0],
-      });
-      
-      return createResponse({ success: true });
-    }
-    
-    default:
-      return createResponse(null, '未知操作');
+    const token = generateToken(user.id);
+    return success({ user, token });
   }
+  
+  if (action === 'register') {
+    const { email, password, name, role } = event.body;
+    
+    const exists = await db.collection('users').where({ email }).get();
+    if (exists.data.length > 0) {
+      return error('该邮箱已被注册');
+    }
+    
+    const user = {
+      id: Date.now().toString(),
+      email,
+      password: hashPassword(password),
+      name,
+      role: role || 'student',
+      approved: false,
+      avatar: '',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    
+    await db.collection('users').add({ data: user });
+    delete user.password;
+    return success(user);
+  }
+  
+  if (action === 'me') {
+    const token = event.headers?.authorization?.replace('Bearer ', '');
+    const user = await getCurrentUser(token);
+    if (!user) return error('未登录');
+    delete user.password;
+    return success(user);
+  }
+  
+  if (action === 'change-password') {
+    const token = event.headers?.authorization?.replace('Bearer ', '');
+    const user = await getCurrentUser(token);
+    if (!user) return error('未登录');
+    
+    const { oldPassword, newPassword } = event.body;
+    
+    if (!comparePassword(oldPassword, user.password)) {
+      return error('旧密码错误');
+    }
+    
+    await db.collection('users').doc(user._id).update({
+      data: {
+        password: hashPassword(newPassword),
+        updated_at: new Date().toISOString()
+      }
+    });
+    
+    return success({ success: true });
+  }
+  
+  return error('无效的操作');
 }
+
+// ============ 用户管理 ============
 
 async function handleUsers(event) {
-  const { action, id, role, newPassword } = event.queryString || event.body || {};
-  const db = initDB();
+  const token = event.headers?.authorization?.replace('Bearer ', '');
+  const user = await getCurrentUser(token);
   
-  switch (action) {
-    case 'list': {
-      const res = await db.collection('users').get();
-      const users = res.data.map(u => {
-        const { password_hash, ...safe } = u;
-        return safe;
-      });
-      return createResponse(users);
-    }
-    
-    case 'approve': {
-      await db.collection('users').doc(id).update({
-        approved: true,
-        updated_at: new Date().toISOString().split('T')[0],
-      });
-      
-      const res = await db.collection('users').doc(id).get();
-      const { password_hash, ...safe } = res.data;
-      return createResponse(safe);
-    }
-    
-    case 'role': {
-      await db.collection('users').doc(id).update({
-        role,
-        updated_at: new Date().toISOString().split('T')[0],
-      });
-      
-      const res = await db.collection('users').doc(id).get();
-      const { password_hash, ...safe } = res.data;
-      return createResponse(safe);
-    }
-    
-    case 'reset-password': {
-      const res = await db.collection('users').where({ email: id }).get();
-      const user = res.data[0];
-      
-      if (!user) {
-        return createResponse(null, '用户不存在');
-      }
-      
-      const newHash = bcrypt.hashSync(newPassword, 10);
-      await db.collection('users').doc(user._id).update({
-        password_hash: newHash,
-        updated_at: new Date().toISOString().split('T')[0],
-      });
-      
-      return createResponse({ success: true });
-    }
-    
-    case 'delete': {
-      await db.collection('users').doc(id).remove();
-      return createResponse(null);
-    }
-    
-    default: {
-      const res = await db.collection('users').get();
-      const users = res.data.map(u => {
-        const { password_hash, ...safe } = u;
-        return safe;
-      });
-      return createResponse(users);
-    }
+  if (!user || user.role !== 'admin') {
+    return error('权限不足');
   }
+  
+  const { action } = event.queryString || {};
+  
+  if (!action) {
+    const result = await db.collection('users').get();
+    const users = result.data.map(u => { delete u.password; return u; });
+    return success(users);
+  }
+  
+  if (action === 'approve') {
+    const { id } = event.queryString;
+    await db.collection('users').where({ id }).update({
+      data: { approved: true, updated_at: new Date().toISOString() }
+    });
+    return success({ success: true });
+  }
+  
+  if (action === 'role') {
+    const { id } = event.queryString;
+    const { role } = event.body;
+    await db.collection('users').where({ id }).update({
+      data: { role, updated_at: new Date().toISOString() }
+    });
+    return success({ success: true });
+  }
+  
+  if (action === 'delete') {
+    const { id } = event.queryString;
+    await db.collection('users').where({ id }).remove();
+    return success({ success: true });
+  }
+  
+  if (action === 'reset-password') {
+    const { id } = event.queryString;
+    const { newPassword } = event.body;
+    await db.collection('users').where({ id }).update({
+      data: { password: hashPassword(newPassword), updated_at: new Date().toISOString() }
+    });
+    return success({ success: true });
+  }
+  
+  return error('无效的操作');
 }
+
+// ============ 图书管理 ============
 
 async function handleBooks(event) {
-  const { action, id, keyword, category, module_id } = event.queryString || {};
-  const body = typeof event.body === 'string' ? JSON.parse(event.body) : event.body || {};
-  const db = initDB();
+  const token = event.headers?.authorization?.replace('Bearer ', '');
+  const user = await getCurrentUser(token);
   
-  switch (action) {
-    case 'get': {
-      const res = await db.collection('books').doc(id).get();
-      return createResponse(res.data);
+  if (!user) return error('未登录');
+  
+  const { action, keyword, category, module_id } = event.queryString || {};
+  
+  if (!action) {
+    let query = db.collection('books');
+    
+    if (keyword) {
+      query = query.where(db.command.or([
+        { title: db.RegExp({ regexp: keyword, options: 'i' }) },
+        { author: db.RegExp({ regexp: keyword, options: 'i' }) },
+        { isbn: db.RegExp({ regexp: keyword, options: 'i' }) }
+      ]));
     }
     
-    case 'create': {
-      const newBook = {
-        _id: generateId('book_'),
-        ...body,
-        available_copies: body.total_copies || 1,
-        created_at: new Date().toISOString().split('T')[0],
-        updated_at: new Date().toISOString().split('T')[0],
-      };
-      
-      await db.collection('books').add(newBook);
-      return createResponse(newBook);
+    if (category) {
+      query = query.where({ category });
     }
     
-    case 'update': {
-      const bookRes = await db.collection('books').doc(id).get();
-      const book = bookRes.data;
-      
-      if (!book) {
-        return createResponse(null, '图书不存在');
-      }
-      
-      if (body.total_copies !== undefined) {
-        const diff = body.total_copies - book.total_copies;
-        body.available_copies = Math.max(0, (book.available_copies || 0) + diff);
-      }
-      
-      body.updated_at = new Date().toISOString().split('T')[0];
-      await db.collection('books').doc(id).update(body);
-      
-      const updatedRes = await db.collection('books').doc(id).get();
-      return createResponse(updatedRes.data);
+    if (module_id) {
+      query = query.where({ module_id });
     }
     
-    case 'delete': {
-      await db.collection('books').doc(id).remove();
-      return createResponse(null);
-    }
-    
-    default: {
-      let query = db.collection('books');
-      
-      if (module_id) {
-        query = query.where({ module_id });
-      }
-      if (category) {
-        query = query.where({ category });
-      }
-      if (keyword) {
-        query = query.where(db.command.or([
-          { title: db.RegExp({ regexp: keyword, options: 'i' }) },
-          { author: db.RegExp({ regexp: keyword, options: 'i' }) },
-        ]));
-      }
-      
-      const res = await query.get();
-      return createResponse(res.data);
-    }
+    const result = await query.get();
+    return success(result.data);
   }
+  
+  if (action === 'get') {
+    const { id } = event.queryString;
+    const result = await db.collection('books').where({ id }).get();
+    return success(result.data[0] || null);
+  }
+  
+  if (action === 'create') {
+    if (user.role !== 'admin') return error('权限不足');
+    
+    const book = {
+      ...event.body,
+      id: Date.now().toString(),
+      available_count: event.body.total_count || 1,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    
+    await db.collection('books').add({ data: book });
+    return success(book);
+  }
+  
+  if (action === 'update') {
+    if (user.role !== 'admin') return error('权限不足');
+    
+    const { id } = event.queryString;
+    const updates = { ...event.body, updated_at: new Date().toISOString() };
+    
+    const result = await db.collection('books').where({ id }).update({ data: updates });
+    return success({ success: result.stats.updated > 0 });
+  }
+  
+  if (action === 'delete') {
+    if (user.role !== 'admin') return error('权限不足');
+    
+    const { id } = event.queryString;
+    await db.collection('books').where({ id }).remove();
+    return success({ success: true });
+  }
+  
+  return error('无效的操作');
 }
+
+// ============ 借阅记录 ============
 
 async function handleBorrowRecords(event) {
-  const { action, id, user_id } = event.queryString || {};
-  const body = typeof event.body === 'string' ? JSON.parse(event.body) : event.body || {};
-  const db = initDB();
+  const token = event.headers?.authorization?.replace('Bearer ', '');
+  const user = await getCurrentUser(token);
   
-  switch (action) {
-    case 'get': {
-      const res = await db.collection('borrow_records').doc(id).get();
-      return createResponse(res.data);
+  if (!user) return error('未登录');
+  
+  const { action, user_id } = event.queryString || {};
+  
+  if (!action) {
+    let query = db.collection('borrow_records');
+    
+    if (user_id) {
+      query = query.where({ user_id });
+    } else if (user.role !== 'admin') {
+      query = query.where({ user_id: user.id });
     }
     
-    case 'create': {
-      const bookRes = await db.collection('books').doc(body.book_id).get();
-      const book = bookRes.data;
-      
-      if (!book) {
-        return createResponse(null, '图书不存在');
-      }
-      
-      if ((book.available_copies || 0) <= 0) {
-        return createResponse(null, '该图书暂时不可借');
-      }
-      
-      const newRecord = {
-        _id: generateId('borrow_'),
-        book_id: body.book_id,
-        user_id: body.user_id,
-        borrow_date: new Date().toISOString().split('T')[0],
-        due_date: body.due_date,
-        status: 'borrowed',
-        created_at: new Date().toISOString().split('T')[0],
-        updated_at: new Date().toISOString().split('T')[0],
-      };
-      
-      await db.collection('borrow_records').add(newRecord);
-      
-      await db.collection('books').doc(body.book_id).update({
-        available_copies: book.available_copies - 1,
-        updated_at: new Date().toISOString().split('T')[0],
-      });
-      
-      return createResponse(newRecord);
-    }
+    const result = await query.orderBy('created_at', 'desc').get();
     
-    case 'return': {
-      const recordRes = await db.collection('borrow_records').doc(id).get();
-      const record = recordRes.data;
-      
-      if (!record) {
-        return createResponse(null, '借阅记录不存在');
-      }
-      
-      await db.collection('borrow_records').doc(id).update({
-        status: 'returned',
-        return_date: new Date().toISOString().split('T')[0],
-        updated_at: new Date().toISOString().split('T')[0],
-      });
-      
-      const bookRes = await db.collection('books').doc(record.book_id).get();
-      const book = bookRes.data;
-      if (book) {
-        await db.collection('books').doc(record.book_id).update({
-          available_copies: (book.available_copies || 0) + 1,
-          updated_at: new Date().toISOString().split('T')[0],
-        });
-      }
-      
-      const updatedRes = await db.collection('borrow_records').doc(id).get();
-      return createResponse(updatedRes.data);
-    }
+    const records = await Promise.all(result.data.map(async record => {
+      const bookResult = await db.collection('books').where({ id: record.book_id }).get();
+      return { ...record, book: bookResult.data[0] || null };
+    }));
     
-    default: {
-      let query = db.collection('borrow_records');
-      if (user_id) {
-        query = query.where({ user_id });
-      }
-      
-      const res = await query.get();
-      
-      const recordsWithBook = await Promise.all(res.data.map(async record => {
-        const bookRes = await db.collection('books').doc(record.book_id).get();
-        const userRes = await db.collection('users').doc(record.user_id).get();
-        
-        return {
-          ...record,
-          books: bookRes.data ? {
-            id: bookRes.data._id,
-            title: bookRes.data.title,
-            author: bookRes.data.author,
-            cover_url: bookRes.data.cover_url,
-          } : undefined,
-          users: userRes.data ? {
-            id: userRes.data._id,
-            name: userRes.data.name,
-            email: userRes.data.email,
-          } : undefined,
-        };
-      }));
-      
-      return createResponse(recordsWithBook);
-    }
+    return success(records);
   }
+  
+  if (action === 'create') {
+    const { book_id, due_date } = event.body;
+    
+    const bookResult = await db.collection('books').where({ id: book_id }).get();
+    if (bookResult.data.length === 0) {
+      return error('图书不存在');
+    }
+    
+    const book = bookResult.data[0];
+    if (book.available_count <= 0) {
+      return error('该图书已无库存');
+    }
+    
+    const record = {
+      id: Date.now().toString(),
+      book_id,
+      user_id: user.id,
+      due_date,
+      returned: false,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    
+    await db.collection('borrow_records').add({ data: record });
+    await db.collection('books').where({ id: book_id }).update({
+      data: { available_count: book.available_count - 1, updated_at: new Date().toISOString() }
+    });
+    
+    return success(record);
+  }
+  
+  if (action === 'return') {
+    if (user.role !== 'admin') return error('权限不足');
+    
+    const { id } = event.queryString;
+    
+    const result = await db.collection('borrow_records').where({ id }).get();
+    if (result.data.length === 0) {
+      return error('记录不存在');
+    }
+    
+    const record = result.data[0];
+    if (record.returned) {
+      return error('该图书已归还');
+    }
+    
+    await db.collection('borrow_records').where({ id }).update({
+      data: { returned: true, updated_at: new Date().toISOString() }
+    });
+    
+    const bookResult = await db.collection('books').where({ id: record.book_id }).get();
+    if (bookResult.data.length > 0) {
+      await db.collection('books').where({ id: record.book_id }).update({
+        data: { available_count: bookResult.data[0].available_count + 1, updated_at: new Date().toISOString() }
+      });
+    }
+    
+    return success({ success: true });
+  }
+  
+  return error('无效的操作');
 }
 
+// ============ 家庭管理 ============
+
 async function handleFamilies(event) {
-  const { action, id } = event.queryString || {};
-  const body = typeof event.body === 'string' ? JSON.parse(event.body) : event.body || {};
-  const db = initDB();
+  const token = event.headers?.authorization?.replace('Bearer ', '');
+  const user = await getCurrentUser(token);
   
-  switch (action) {
-    case 'get': {
-      const res = await db.collection('families').doc(id).get();
-      return createResponse(res.data);
-    }
-    
-    case 'create': {
-      const newFamily = {
-        _id: generateId('family_'),
-        ...body,
-        members: [body.head_of_family],
-        created_at: new Date().toISOString().split('T')[0],
-        updated_at: new Date().toISOString().split('T')[0],
-      };
-      
-      await db.collection('families').add(newFamily);
-      
-      const newModule = {
-        _id: generateId('mod_'),
-        name: `${body.name}藏书`,
-        type: 'family',
-        owner_id: newFamily._id,
-        is_public: false,
-        created_at: new Date().toISOString().split('T')[0],
-        updated_at: new Date().toISOString().split('T')[0],
-      };
-      
-      await db.collection('modules').add(newModule);
-      
-      return createResponse(newFamily);
-    }
-    
-    case 'add-member': {
-      const familyRes = await db.collection('families').doc(id).get();
-      const family = familyRes.data;
-      
-      if (!family) {
-        return createResponse(null, '家庭不存在');
-      }
-      
-      const members = family.members || [];
-      if (!members.includes(body.userId)) {
-        members.push(body.userId);
-        await db.collection('families').doc(id).update({
-          members,
-          updated_at: new Date().toISOString().split('T')[0],
-        });
-      }
-      
-      return createResponse({ success: true });
-    }
-    
-    case 'books': {
-      const modRes = await db.collection('modules').where({ type: 'family', owner_id: id }).get();
-      const mod = modRes.data[0];
-      
-      if (!mod) {
-        return createResponse([]);
-      }
-      
-      const booksRes = await db.collection('books').where({ module_id: mod._id }).get();
-      return createResponse(booksRes.data);
-    }
-    
-    default: {
-      const res = await db.collection('families').get();
-      return createResponse(res.data);
-    }
+  if (!user) return error('未登录');
+  
+  const { action, id } = event.queryString || {};
+  
+  if (!action) {
+    const result = await db.collection('families').get();
+    return success(result.data);
   }
+  
+  if (action === 'get') {
+    const result = await db.collection('families').where({ id }).get();
+    return success(result.data[0] || null);
+  }
+  
+  if (action === 'create') {
+    if (user.role !== 'admin') return error('权限不足');
+    
+    const family = {
+      ...event.body,
+      id: Date.now().toString(),
+      members: [],
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    
+    await db.collection('families').add({ data: family });
+    return success(family);
+  }
+  
+  if (action === 'add-member') {
+    if (user.role !== 'admin') return error('权限不足');
+    
+    const { userId } = event.body;
+    
+    const result = await db.collection('families').where({ id }).get();
+    if (result.data.length === 0) return error('家庭不存在');
+    
+    const family = result.data[0];
+    if (!family.members.includes(userId)) {
+      family.members.push(userId);
+      await db.collection('families').where({ id }).update({
+        data: { members: family.members, updated_at: new Date().toISOString() }
+      });
+    }
+    
+    return success({ success: true });
+  }
+  
+  if (action === 'books') {
+    const result = await db.collection('books').where({ module_id: 'family' }).get();
+    return success(result.data);
+  }
+  
+  return error('无效的操作');
 }
+
+// ============ 通用接口 ============
 
 async function handleCommon(event) {
   const { action } = event.queryString || {};
-  const db = initDB();
   
-  switch (action) {
-    case 'modules': {
-      const res = await db.collection('modules').get();
-      return createResponse(res.data);
-    }
-    
-    case 'stats': {
-      const booksRes = await db.collection('books').get();
-      const recordsRes = await db.collection('borrow_records').where({ status: 'borrowed' }).get();
-      const usersRes = await db.collection('users').get();
-      
-      const totalBooks = booksRes.data.reduce((sum, b) => sum + (b.total_copies || 0), 0);
-      const availableBooks = booksRes.data.reduce((sum, b) => sum + (b.available_copies || 0), 0);
-      
-      return createResponse({
-        total_books: totalBooks,
-        available_books: availableBooks,
-        total_borrowed: recordsRes.data.length,
-        total_users: usersRes.data.length,
-      });
-    }
-    
-    case 'health': {
-      return createResponse({ status: 'ok' });
-    }
-    
-    case 'init': {
-      await initDatabase(db);
-      return createResponse({ success: true });
-    }
-    
-    default:
-      return createResponse(null, '未知操作');
-  }
-}
-
-async function initDatabase(db) {
-  const collections = ['users', 'books', 'borrow_records', 'families', 'modules'];
-  
-  for (const coll of collections) {
-    try {
-      await db.createCollection(coll);
-    } catch (e) {
-      console.log(`Collection ${coll} already exists`);
-    }
+  if (action === 'modules') {
+    const result = await db.collection('modules').get();
+    return success(result.data);
   }
   
-  const userCount = await db.collection('users').count().get();
-  if (userCount.total === 0) {
-    const adminHash = bcrypt.hashSync('admin123', 10);
-    await db.collection('users').add({
-      _id: 'user_admin',
+  if (action === 'stats') {
+    const booksResult = await db.collection('books').get();
+    const recordsResult = await db.collection('borrow_records').get();
+    const usersResult = await db.collection('users').get();
+    
+    const availableBooks = booksResult.data.reduce((sum, book) => sum + (book.available_count || 0), 0);
+    const borrowedRecords = recordsResult.data.filter(r => !r.returned);
+    
+    return success({
+      total_books: booksResult.data.length,
+      available_books: availableBooks,
+      total_borrowed: borrowedRecords.length,
+      total_users: usersResult.data.length
+    });
+  }
+  
+  if (action === 'init') {
+    const usersResult = await db.collection('users').get();
+    if (usersResult.data.length > 0) {
+      return error('数据库已初始化');
+    }
+    
+    const admin = {
+      id: 'admin',
       email: 'admin@library.com',
-      password_hash: adminHash,
+      password: hashPassword('admin123'),
       name: '管理员',
       role: 'admin',
       approved: true,
-      created_at: new Date().toISOString().split('T')[0],
-      updated_at: new Date().toISOString().split('T')[0],
-    });
+      avatar: '',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    
+    await db.collection('users').add({ data: admin });
     
     const modules = [
-      { _id: 'mod_1', name: '文学经典', type: 'school', is_public: true, created_at: '2024-01-01', updated_at: '2024-01-01' },
-      { _id: 'mod_2', name: '科技科普', type: 'school', is_public: true, created_at: '2024-01-01', updated_at: '2024-01-01' },
-      { _id: 'mod_3', name: '人文历史', type: 'school', is_public: true, created_at: '2024-01-01', updated_at: '2024-01-01' },
-      { _id: 'mod_4', name: '儿童读物', type: 'school', is_public: true, created_at: '2024-01-01', updated_at: '2024-01-01' },
-      { _id: 'mod_5', name: '世界名著', type: 'school', is_public: true, created_at: '2024-01-01', updated_at: '2024-01-01' },
-      { _id: 'mod_6', name: '科普读物', type: 'school', is_public: true, created_at: '2024-01-01', updated_at: '2024-01-01' },
+      { id: 'library', name: '图书借阅', icon: 'BookOpen' },
+      { id: 'family', name: '家庭图书', icon: 'Home' },
+      { id: 'admin', name: '系统管理', icon: 'Settings' }
     ];
     
-    for (const mod of modules) {
-      await db.collection('modules').add(mod);
+    for (const m of modules) {
+      await db.collection('modules').add({ data: m });
     }
+    
+    return success({ success: true, message: '数据库初始化完成' });
   }
+  
+  return error('无效的操作');
 }
 
-exports.main = async function (event, context) {
-  initDB();
+// 主入口
+exports.main = async (event, context) => {
+  const { path } = event;
   
-  const path = event.path || '';
-  const headers = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    'Content-Type': 'application/json',
-  };
-  
-  if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 200, headers, body: JSON.stringify(createResponse()) };
+  if (path === '/api/auth') {
+    return handleAuth(event);
   }
   
-  try {
-    let result;
-    
-    if (path.includes('/api/auth')) {
-      result = await handleAuth(event);
-    } else if (path.includes('/api/users')) {
-      result = await handleUsers(event);
-    } else if (path.includes('/api/books')) {
-      result = await handleBooks(event);
-    } else if (path.includes('/api/borrow-records')) {
-      result = await handleBorrowRecords(event);
-    } else if (path.includes('/api/families')) {
-      result = await handleFamilies(event);
-    } else if (path.includes('/api/common')) {
-      result = await handleCommon(event);
-    } else {
-      result = createResponse(null, '未知路径');
-    }
-    
-    return {
-      statusCode: result.error ? 400 : 200,
-      headers,
-      body: JSON.stringify(result),
-    };
-  } catch (e) {
-    console.error('API Error:', e);
-    return {
-      statusCode: 500,
-      headers,
-      body: JSON.stringify(createResponse(null, e.message || '服务器错误')),
-    };
+  if (path === '/api/users') {
+    return handleUsers(event);
   }
+  
+  if (path === '/api/books') {
+    return handleBooks(event);
+  }
+  
+  if (path === '/api/borrow-records') {
+    return handleBorrowRecords(event);
+  }
+  
+  if (path === '/api/families') {
+    return handleFamilies(event);
+  }
+  
+  if (path === '/api/common') {
+    return handleCommon(event);
+  }
+  
+  return error('接口不存在');
 };
