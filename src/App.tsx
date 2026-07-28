@@ -49,8 +49,10 @@ export default function App() {
     initialize();
   }, [initialize]);
 
+  const basename = import.meta.env.BASE_URL.replace(/\/+$/, '');
+
   return (
-    <Router basename="/library">
+    <Router basename={basename}>
         <Routes>
           <Route path="/login" element={<Suspense><Login /></Suspense>} />
           <Route path="/register" element={<Suspense><Register /></Suspense>} />

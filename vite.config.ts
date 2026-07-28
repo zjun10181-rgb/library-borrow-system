@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react'
 import tsconfigPaths from "vite-tsconfig-paths";
 
 export default defineConfig({
-  base: '/library/',
+  base: process.env.GITHUB_ACTIONS ? '/library-borrow-system/' : '/library/',
   build: {
     sourcemap: 'hidden',
     modulePreload: { polyfill: false },
