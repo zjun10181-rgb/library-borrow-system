@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>学校图书馆藏书管理系统</title>
+  <script>
+    // GitHub Pages SPA fallback: redirect to index with the path as query
+    const base = '/library-borrow-system/';
+    const path = location.pathname.replace(base, '/');
+    sessionStorage.redirect = path;
+    location.replace(base);
+  </script>
+</head>
+<body></body>
+</html>
