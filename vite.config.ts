@@ -2,8 +2,14 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tsconfigPaths from "vite-tsconfig-paths";
 
+const base = process.env.NETLIFY === 'true'
+  ? '/'
+  : process.env.GITHUB_ACTIONS
+    ? '/library-borrow-system/'
+    : '/library/';
+
 export default defineConfig({
-  base: process.env.GITHUB_ACTIONS ? '/library-borrow-system/' : '/library/',
+  base,
   build: {
     sourcemap: 'hidden',
     modulePreload: { polyfill: false },
