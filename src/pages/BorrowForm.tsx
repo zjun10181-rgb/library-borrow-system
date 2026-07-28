@@ -1,27 +1,24 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, BookOpen, Calendar, User } from 'lucide-react';
+import { ArrowLeft, BookOpen, Calendar, User, Phone } from 'lucide-react';
 import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
-import { Select } from '@/components/common/Select';
 import { Card } from '@/components/common/Card';
-import { getBookById, getUsers, createBorrowRecord, updateBook } from '@/utils/supabase';
-import { useAuthStore } from '@/store/authStore';
-import type { Book, User as UserType } from '@/types';
+import { getBookById, createBorrowRecord, updateBook } from '@/utils/supabase';
+import type { Book } from '@/types';
 
 export function BorrowForm() {
   const [searchParams] = useSearchParams();
   const bookId = searchParams.get('bookId') || '';
   
   const [book, setBook] = useState<Book | null>(null);
-  const [users, setUsers] = useState<UserType[]>([]);
-  const [selectedUserId, setSelectedUserId] = useState('');
+  const [borrowerName, setBorrowerName] = useState('');
+  const [borrowerContact, setBorrowerContact] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   
-  const { user } = useAuthStore();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -31,17 +28,8 @@ export function BorrowForm() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [{ data: bookData }, { data: usersData }] = await Promise.all([
-        bookId ? getBookById(bookId) : Promise.resolve({ data: null }),
-        getUsers(),
-      ]);
+      const { data: bookData } = bookId ? await getBookById(bookId) : { data: null };
       setBook(bookData || null);
-      setUsers(usersData || []);
-      
-      const defaultUser = usersData?.find(u => u.id === user?.id);
-      if (defaultUser) {
-        setSelectedUserId(defaultUser.id);
-      }
       
       const defaultDueDate = new Date();
       defaultDueDate.setDate(defaultDueDate.getDate() + 30);
@@ -56,8 +44,8 @@ export function BorrowForm() {
     e.preventDefault();
     setError('');
 
-    if (!book || !selectedUserId || !dueDate) {
-      setError('请填写完整信息');
+    if (!book || !borrowerName.trim() || !borrowerContact.trim() || !dueDate) {
+      setError('请填写完整信息（姓名和联系方式为必填）');
       return;
     }
 
@@ -77,7 +65,8 @@ export function BorrowForm() {
     try {
       await createBorrowRecord({
         book_id: book.id,
-        user_id: selectedUserId,
+        borrower_name: borrowerName.trim(),
+        borrower_contact: borrowerContact.trim(),
         borrow_date: today,
         due_date: dueDate,
         status: 'borrowed',
@@ -138,21 +127,30 @@ export function BorrowForm() {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label className="block text-sm font-medium text-ink mb-1.5">借阅人</label>
+            <label className="block text-sm font-medium text-ink mb-1.5">借书人姓名 *</label>
             <div className="relative">
               <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted" />
-              <Select 
-                value={selectedUserId} 
-                onChange={(e) => setSelectedUserId(e.target.value)}
+              <Input
+                type="text"
+                value={borrowerName}
+                onChange={(e) => setBorrowerName(e.target.value)}
+                placeholder="请输入借书人姓名"
                 className="pl-12"
-              >
-                <option value="">请选择借阅人</option>
-                {users.filter(u => u.approved).map((user) => (
-                  <option key={user.id} value={user.id}>
-                    {user.name} ({user.role === 'admin' ? '管理员' : user.role === 'teacher' ? '教师' : user.role === 'parent' ? '家长' : '学生'})
-                  </option>
-                ))}
-              </Select>
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-ink mb-1.5">联系方式 *</label>
+            <div className="relative">
+              <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted" />
+              <Input
+                type="text"
+                value={borrowerContact}
+                onChange={(e) => setBorrowerContact(e.target.value)}
+                placeholder="请输入手机号或其他联系方式"
+                className="pl-12"
+              />
             </div>
           </div>
 

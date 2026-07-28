@@ -3,8 +3,10 @@ import react from '@vitejs/plugin-react'
 import tsconfigPaths from "vite-tsconfig-paths";
 
 export default defineConfig({
+  base: '/library/',
   build: {
     sourcemap: 'hidden',
+    modulePreload: { polyfill: false },
   },
   plugins: [
     react({
@@ -14,7 +16,13 @@ export default defineConfig({
         ],
       },
     }),
-    tsconfigPaths()
+    tsconfigPaths(),
+    {
+      name: 'remove-crossorigin',
+      transformIndexHtml(html) {
+        return html.replace(/ crossorigin/g, '');
+      },
+    },
   ],
   resolve: {
     alias: {

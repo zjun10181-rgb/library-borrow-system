@@ -164,7 +164,7 @@ export function AdminPanel() {
         setMessageType('error');
         return;
       }
-      const { error } = await updatePassword(currentUser.email, oldPassword, newPassword);
+      const { error } = await updatePassword(currentUser.email || '', oldPassword, newPassword);
       if (error) {
         setMessage(error.message);
         setMessageType('error');
@@ -493,7 +493,7 @@ export function AdminPanel() {
         borrows.map((record) => {
           const filtered = !searchTerm || 
             record.books.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            record.users.name.toLowerCase().includes(searchTerm.toLowerCase());
+            record.borrower_name.toLowerCase().includes(searchTerm.toLowerCase());
           
           if (!filtered) return null;
 
@@ -507,7 +507,7 @@ export function AdminPanel() {
                   <h3 className="font-semibold text-ink">{record.books.title}</h3>
                   <p className="text-sm text-muted">{record.books.author}</p>
                   <div className="flex items-center space-x-4 mt-1">
-                    <span className="text-xs text-muted">借阅人: {record.users.name}</span>
+                    <span className="text-xs text-muted">借书人: {record.borrower_name} · {record.borrower_contact}</span>
                     <span className="text-xs text-muted">借阅: {record.borrow_date}</span>
                     {record.return_date && (
                       <span className="text-xs text-muted">归还: {record.return_date}</span>

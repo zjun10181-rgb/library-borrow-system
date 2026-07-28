@@ -150,13 +150,13 @@ export function FamilyLibrary() {
     setPreviewUrl(imageUrl);
   };
 
-  const getFamilyModule = (familyId: string) => {
-    return modules.find(m => m.type === 'family' && m.owner_id === familyId);
+  const getFamilyModule = (family: Family) => {
+    return modules.find(m => m.type === 'family' && m.owner_id === family.head_of_family);
   };
 
   const handleSelectFamily = (family: Family) => {
     setSelectedFamily(family);
-    const familyModule = getFamilyModule(family.id);
+    const familyModule = getFamilyModule(family);
     if (familyModule) {
       setBookForm(prev => ({ ...prev, module_id: familyModule.id }));
     }

@@ -1,6 +1,7 @@
-import { BookOpen, User } from 'lucide-react';
+import { User } from 'lucide-react';
 import { Card } from '@/components/common/Card';
 import { Badge } from '@/components/common/Badge';
+import { BookCover } from '@/components/book/BookCover';
 import type { Book } from '@/types';
 
 interface BookCardProps {
@@ -14,21 +15,7 @@ export function BookCard({ book, onClick }: BookCardProps) {
   return (
     <Card hoverable onClick={onClick} className="flex flex-col">
       <div className="flex items-start space-x-4">
-        <div className="w-20 h-28 bg-primary-100 rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden">
-          {book.cover_url ? (
-            <img 
-              src={book.cover_url} 
-              alt={book.title}
-              className="w-full h-full object-cover"
-              loading="lazy"
-              onError={(e) => {
-                (e.target as HTMLImageElement).style.display = 'none';
-              }}
-            />
-          ) : (
-            <BookOpen className="w-10 h-10 text-primary-400" />
-          )}
-        </div>
+        <BookCover src={book.cover_url} alt={book.title} size="md" />
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between">
             <h3 className="font-serif font-semibold text-ink truncate">

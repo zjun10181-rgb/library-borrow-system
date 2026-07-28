@@ -3,7 +3,7 @@ import { ArrowLeft, BookOpen, Calendar, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/common/Button';
 import { Card } from '@/components/common/Card';
 import { Badge } from '@/components/common/Badge';
-import { getBorrowRecords, returnBook, updateBook, getBookById } from '@/utils/supabase';
+import { getBorrowRecords, returnBook } from '@/utils/supabase';
 import { useAuthStore } from '@/store/authStore';
 import type { BorrowRecordWithBook } from '@/types';
 
@@ -33,12 +33,6 @@ export function MyBorrowing() {
     setReturningId(record.id);
     try {
       await returnBook(record.id);
-      const { data: bookData } = await getBookById(record.books.id);
-      if (bookData) {
-        await updateBook(record.books.id, {
-          available_copies: bookData.available_copies + 1,
-        });
-      }
       fetchBorrowRecords();
     } catch (error) {
       console.error('Failed to return book:', error);
@@ -129,6 +123,10 @@ export function MyBorrowing() {
                     <div>
                       <h4 className="font-semibold text-ink">{record.books.title}</h4>
                       <p className="text-sm text-muted">{record.books.author}</p>
+                      <div className="flex items-center space-x-4 mt-1">
+                        <span className="text-xs text-muted">借书人: {record.borrower_name}</span>
+                        <span className="text-xs text-muted">{record.borrower_contact}</span>
+                      </div>
                     </div>
                   </div>
                   <div className="flex items-center space-x-4">

@@ -21,6 +21,10 @@ dist-ssr
 server/db.json
 server/data.db
 
+# CloudBase
+.cloudbase
+functions/node_modules
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

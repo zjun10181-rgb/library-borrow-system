@@ -4,6 +4,7 @@ import { ArrowLeft, Edit, Trash2, BookOpen, User, Calendar, Tag, FileText } from
 import { Button } from '@/components/common/Button';
 import { Card } from '@/components/common/Card';
 import { Badge } from '@/components/common/Badge';
+import { BookCover } from '@/components/book/BookCover';
 import { getBookById, deleteBook, getModules } from '@/utils/supabase';
 import { useAuthStore } from '@/store/authStore';
 import type { Book, Module } from '@/types';
@@ -84,21 +85,7 @@ export function BookDetail() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-1">
           <Card>
-            <div className="w-full aspect-[3/4] bg-primary-100 rounded-xl flex items-center justify-center mb-4 overflow-hidden">
-              {book.cover_url ? (
-                <img 
-                  src={book.cover_url} 
-                  alt={book.title}
-                  className="w-full h-full object-cover"
-                  loading="lazy"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).style.display = 'none';
-                  }}
-                />
-              ) : (
-                <BookOpen className="w-20 h-20 text-primary-300" />
-              )}
-            </div>
+            <BookCover src={book.cover_url} alt={book.title} size="lg" className="mb-4 rounded-xl" />
             <div className="flex gap-2">
               {isAdmin() && (
                 <>

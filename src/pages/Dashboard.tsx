@@ -162,7 +162,7 @@ export function Dashboard() {
                     <div>
                       <p className="font-medium text-ink">{record.books.title}</p>
                       <p className="text-sm text-muted">
-                        {record.books.author} · {record.users.name}
+                        {record.books.author} · {record.borrower_name}
                       </p>
                     </div>
                     <div className="text-right">

@@ -57,7 +57,9 @@ export type BorrowStatus = 'borrowed' | 'returned' | 'overdue';
 export interface BorrowRecord {
   id: string;
   book_id: string;
-  user_id: string;
+  user_id?: string;
+  borrower_name: string;
+  borrower_contact: string;
   borrow_date: string;
   due_date: string;
   return_date?: string;
@@ -113,7 +115,9 @@ export interface Statistics {
 export interface BorrowRecordWithBook {
   id: string;
   book_id: string;
-  user_id: string;
+  user_id?: string;
+  borrower_name: string;
+  borrower_contact: string;
   borrow_date: string;
   due_date: string;
   return_date?: string;
