@@ -1,57 +1,48 @@
-# React + TypeScript + Vite
+# 📚 图书馆借书系统（单机版）
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+一个**完全离线、数据保存在本地硬盘**的图书馆借书管理系统。无需联网、无需云端服务器，复制到任何电脑即可独立运行。
 
-Currently, two official plugins are available:
+## ✨ 功能
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- 👥 用户管理：注册 / 审核 / 角色（学生、教师、家长、管理员）/ 重置密码
+- 📖 图书管理：132 本初始图书，增删改查、按分类/关键词筛选
+- 📤 借书 / 还书：借阅登记、到期提醒、库存自动增减
+- 🏠 家庭图书馆：创建家庭、添加成员、共享家庭藏书
+- 📊 数据看板：图书总量、在架数量、借出数量、用户统计
+- 🔐 密码安全：scrypt 加盐哈希存储，Token 登录（7 天有效）
 
-## Expanding the ESLint configuration
+## 🚀 快速开始（给使用者）
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+**前提**：安装 [Node.js](https://nodejs.org) LTS 版本（一次性）。
 
-```js
-export default tseslint.config({
-  extends: [
-    // Remove ...tseslint.configs.recommended and replace with this
-    ...tseslint.configs.recommendedTypeChecked,
-    // Alternatively, use this for stricter rules
-    ...tseslint.configs.strictTypeChecked,
-    // Optionally, add this for stylistic rules
-    ...tseslint.configs.stylisticTypeChecked,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
+| 平台 | 启动方式 |
+|------|----------|
+| Windows | 双击 `start.bat` |
+| Mac / Linux | 运行 `start.sh` |
+
+首次启动自动完成依赖安装、前端构建、数据库初始化（写入初始图书与演示账号），随后自动打开浏览器。
+
+**演示管理员账号**：`admin@library.com` / `admin123`
+
+## 💾 数据备份
+
+所有数据保存在 `data/library.db`（SQLite 单文件）。**备份 = 拷贝这个文件**，恢复时放回原位置即可。
+
+## 🧑‍💻 开发调试
+
+```bash
+npm install
+npm install --prefix server   # 后端依赖
+
+npm run dev:server            # 终端 1：后端（端口 3001）
+npm run dev                   # 终端 2：前端（端口 5173）
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## 🗂 技术栈
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+- 前端：Vite + React 18 + TypeScript + Tailwind CSS + Zustand
+- 后端：Node.js + Express + better-sqlite3（同步 SQLite）
+- 认证：scrypt 密码哈希 + HMAC 签名 Token
+- 部署：生产模式由 Express 托管前端构建产物（单端口访问）
 
-export default tseslint.config({
-  extends: [
-    // other configs...
-    // Enable lint rules for React
-    reactX.configs['recommended-typescript'],
-    // Enable lint rules for React DOM
-    reactDom.configs.recommended,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
-```
+详见 [README-交付.md](./README-交付.md)。

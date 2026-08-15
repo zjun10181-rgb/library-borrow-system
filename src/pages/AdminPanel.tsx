@@ -121,12 +121,9 @@ export function AdminPanel() {
       return;
     }
     try {
-      const userData = { id: `user_${Date.now()}`, email: newUser.email, name: newUser.name, role: newUser.role };
+      const userData = { id: `user_${Date.now()}`, email: newUser.email, name: newUser.name, role: newUser.role, password: newUser.password };
       await insertUser(userData);
-      const mockPasswords: Record<string, string> = {};
-      mockPasswords[newUser.email] = newUser.password;
-      localStorage.setItem('library_passwords', JSON.stringify({ ...JSON.parse(localStorage.getItem('library_passwords') || '{}'), ...mockPasswords }));
-      setMessage('用户创建成功');
+      setMessage(`用户创建成功，初始密码：${newUser.password}`);
       setMessageType('success');
       setNewUser({ name: '', email: '', password: '', role: 'student' });
       fetchData();

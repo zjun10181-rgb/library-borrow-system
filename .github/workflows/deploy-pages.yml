@@ -22,10 +22,10 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # 注意：本项目为单机版架构（本地后端 + SQLite），
+      # GitHub Pages 静态托管没有后端支持，仅适合预览静态页面。
       - name: Build
         run: npm run build
-        env:
-          VITE_USE_LOCAL_MOCK: "true"
 
       - name: Deploy to gh-pages branch
         uses: peaceiris/actions-gh-pages@v4

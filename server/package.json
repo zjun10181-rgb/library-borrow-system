@@ -1,0 +1,21 @@
+{
+  "name": "library-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "图书馆借书系统 - 本地单机后端 (Express + SQLite)",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js",
+    "seed:convert": "node scripts/convert-mock.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.10.0",
+    "cors": "^2.8.5",
+    "express": "^4.21.2"
+  }
+}

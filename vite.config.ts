@@ -38,7 +38,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'https://seven-website-8gwpkoon2ce77ee5.tcloudbaseapp.com',
+        target: 'http://localhost:3001',
         changeOrigin: true,
       },
     },

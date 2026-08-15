@@ -17,13 +17,20 @@ dist-ssr
 .env.local
 .env.*.local
 
-# 数据库文件
+# 数据库文件（单机版数据存 data/ 目录，备份时单独拷贝）
 server/db.json
 server/data.db
+data/
+*.db
+*.db-wal
+*.db-shm
 
 # CloudBase
 .cloudbase
 functions/node_modules
+
+# CodeBuddy 工具内部数据
+.codebuddy/
 
 # Editor directories and files
 .vscode/*
